@@ -13,56 +13,102 @@ titanic = train_set.copy()
 
 survived = titanic[titanic["Survived"] != 0]
 
+
 def plot_hist_feature(feature, BINS=10):
     plt.hist(titanic[feature], bins=BINS)
     plt.hist(survived[feature], bins=BINS)
     plt.show()
 
+
 # Preprocessing
 train_set = train_set.dropna(subset=["Embarked"])
-print(train_set.notna().describe())
 titanic = train_set.drop("Survived", axis=1)
 
 titanic = titanic.drop("Name", axis=1)
 titanic = titanic.drop("PassengerId", axis=1)
-titanic = titanic.drop("Ticket",axis=1)
-titanic = titanic.drop("Cabin",axis=1)
+titanic = titanic.drop("Ticket", axis=1)
+titanic = titanic.drop("Cabin", axis=1)
 
 titanic_labels = train_set["Survived"].copy()
 
-titanic_num = titanic[["Age","SibSp","Parch","Fare"]]
-titanic_cat = titanic[["Sex","Embarked"]]
+titanic_num = titanic[["Pclass", "Age", "SibSp", "Parch", "Fare"]]
+titanic_cat = titanic[["Sex", "Embarked"]]
 
-from sklearn.pipeline import Pipeline, FeatureUnion
-
+from sklearn.pipeline import Pipeline
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 
-pipeline_num = Pipeline([
-    ("iterimp", IterativeImputer(missing_values=float("nan"))),
-    ("minmax", MinMaxScaler())
-    ])
+pipeline_num = Pipeline(
+    [
+        ("iterimp", IterativeImputer(missing_values=float("nan"))),
+        ("minmax", MinMaxScaler()),
+    ]
+)
 
 transformed = pipeline_num.fit_transform(titanic_num)
-np.savetxt("output_num",transformed)
+np.savetxt("output_num", transformed)
 
-pipeline_cat = Pipeline([
-    ("onehot", OneHotEncoder())
-    ])
-#transformed = pipeline_cat.fit_transform(titanic_cat)
-#np.savetxt("output_cat",transformed)
+pipeline_cat = Pipeline([("onehot", OneHotEncoder())])
 
-pipeline = ColumnTransformer([
-    ("num", pipeline_num, list(titanic_num)),
-    ("cat", pipeline_cat, list(titanic_cat))
-    ])
+pipeline = ColumnTransformer(
+    [("num", pipeline_num, list(titanic_num)), ("cat", pipeline_cat, list(titanic_cat))]
+)
 
-titanic_processed = pipeline.fit_transform(titanic)
-np.savetxt("output_final",titanic_processed)
-print(titanic_processed[0:5][0:])
-print(pipeline.get_params)
-print(pipeline.named_transformers_)
-print(list(titanic_cat))
+titanic_prepared = pipeline.fit_transform(titanic)
+np.savetxt("output_final", titanic_prepared)
+
+# Random Forest Model
+from sklearn.ensemble import RandomForestRegressor
+
+forest_reg = RandomForestRegressor(n_estimators=100)
+
+# Support Vector Machine
+from sklearn.svm import SVC
+
+svm = SVC(kernel="rbf", gamma="scale")
+
+# Evaluation
+training_data = pd.read_csv("./data/test.csv")
+training_data = training_data.drop(["PassengerId", "Name", "Ticket", "Cabin"], axis=1)
+training_prepared = pipeline.transform(training_data)
+np.savetxt("output_final_data", training_prepared)
+
+training_labels = pd.read_csv("./data/gender_submission.csv")[["Survived"]].copy()
+
+def evaluate_model(model_name, model, labels, data, training_labels, training_data):
+    from sklearn.metrics import mean_squared_error
+    from sklearn.model_selection import cross_val_score
+
+    print("Fitting model: " + model_name)
+    model.fit(data, labels)
+    print("Evaluating", model_name, "on training data")
+    data_predict = model.predict(data)
+    rmse = np.sqrt(mean_squared_error(labels, data_predict))
+    print("RMSE:", rmse)
+    scores = cross_val_score(
+        model, data, labels, scoring="neg_mean_squared_error", cv=10
+    )
+    scores = np.sqrt(-scores)
+    print("RMSE CV:\n", "Mean", scores.mean(), "\n STD:", scores.std())
+
+    print("Evaluating", model_name, "on test data")
+    data_predict = model.predict(training_data)
+    rmse = np.sqrt(mean_squared_error(training_labels, data_predict))
+    print("RMSE:", rmse)
+    print("---------\n")
+
+
+evaluate_model(
+    "Random_Forest",
+    forest_reg,
+    titanic_labels,
+    titanic_prepared,
+    training_labels,
+    training_prepared,
+)
+evaluate_model(
+    "SVM", svm, titanic_labels, titanic_prepared, training_labels, training_prepared
+)

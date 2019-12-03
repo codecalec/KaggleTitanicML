@@ -13,7 +13,6 @@ titanic = train_set.copy()
 
 survived = titanic[titanic["Survived"] != 0]
 
-
 def plot_hist_feature(feature, BINS=10):
     plt.hist(titanic[feature], bins=BINS)
     plt.hist(survived[feature], bins=BINS)

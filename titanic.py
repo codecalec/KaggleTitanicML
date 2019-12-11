@@ -59,9 +59,16 @@ pipeline = ColumnTransformer(
 titanic_prepared = pipeline.fit_transform(titanic)
 np.savetxt("output_final", titanic_prepared)
 
+# Linear Model
+from sklearn.linear_model import LinearRegression
+linear_reg = LinearRegression()
+
+#Logistic Model
+from sklearn.linear_model import LogisticRegression
+log_reg = LogisticRegression()
+
 # Random Forest Model
 from sklearn.ensemble import RandomForestRegressor
-
 forest_reg = RandomForestRegressor(n_estimators=100)
 
 # Support Vector Machine
@@ -98,15 +105,14 @@ def evaluate_model(model_name, model, labels, data, training_labels, training_da
     print("RMSE:", rmse)
     print("---------\n")
 
+models = (("Linear_Model",linear_reg),("Log_Model",log_reg),("Random_Forest",forest_reg),("SVM",svm))
 
-evaluate_model(
-    "Random_Forest",
-    forest_reg,
-    titanic_labels,
-    titanic_prepared,
-    training_labels,
-    training_prepared,
-)
-evaluate_model(
-    "SVM", svm, titanic_labels, titanic_prepared, training_labels, training_prepared
-)
+for name,model in models:
+    evaluate_model(
+        name,
+        model,
+        titanic_labels,
+        titanic_prepared,
+        training_labels,
+        training_prepared,
+    )

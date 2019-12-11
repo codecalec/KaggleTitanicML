@@ -73,7 +73,6 @@ svm = SVC(kernel="rbf", gamma="scale")
 training_data = pd.read_csv("./data/test.csv")
 training_data = training_data.drop(["PassengerId", "Name", "Ticket", "Cabin"], axis=1)
 training_prepared = pipeline.transform(training_data)
-np.savetxt("output_final_data", training_prepared)
 
 training_labels = pd.read_csv("./data/gender_submission.csv")[["Survived"]].copy()
 

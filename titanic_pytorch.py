@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 data_path = "data"
 train_data_path = os.path.join(data_path, "train.csv")
 test_data_path = os.path.join(data_path, "test.csv")
@@ -53,6 +52,9 @@ test_prepared = pipeline.fit_transform(test_set)
 import torch
 import torch.nn.functional as F
 
+useCUDA = True if torch.cuda.is_available() else False
+device = torch.device("cuda:0") if useCUDA else torch.device("cpu")
+
 class TitanicNet(torch.nn.Module):
     def __init__(self):
         super(TitanicNet,self).__init__()
@@ -77,10 +79,16 @@ y = train_labels
 x = x.type(torch.FloatTensor)
 y = y.type(torch.FloatTensor)
 
+x = x.to(device)
+y = y.to(device)
+
 #Initialise model
-model = TitanicNet()
+model = TitanicNet().cuda(device=device) if useCUDA else TitanicNet()
 loss_fn = torch.nn.MSELoss(reduction='mean')
 learning_rate = 1e-4
+
+import time
+start = time.time()
 
 #Train Model
 for t in range(2000):
@@ -99,6 +107,8 @@ for t in range(2000):
         for param in model.parameters():
             param -= learning_rate * param.grad
 
+end = time.time()
+print(end - start, useCUDA)
 
 #Test model
 eval_fn = loss_fn
@@ -111,6 +121,9 @@ y = test_labels
 
 x = x.type(torch.FloatTensor)
 y = y.type(torch.FloatTensor)
+
+x = x.to(device)
+y = y.to(device)
 
 y_pred = model(x)
 
